@@ -30,6 +30,18 @@ function StatusPill({ s }: { s: AdminWithdrawal['status'] }) {
   return <Badge variant="secondary">pendente</Badge>;
 }
 
+/** Resolve um nome legível do pedido sem estourar a tipagem */
+function nameFor(w: AdminWithdrawal): string {
+  const aw = w as any;
+  return (
+    aw.user_name ??
+    aw.user_email ??
+    aw.user?.name ??
+    aw.user?.email ??
+    w.user_id
+  );
+}
+
 export default function AdminPedidosPage() {
   useRequireAdmin();
 
@@ -134,8 +146,7 @@ export default function AdminPedidosPage() {
       confirmText: 'Rejeitar',
       cancelText: 'Cancelar',
     });
-    // null => cancelado
-    if (note === null) return;
+    if (note === null) return; // cancelado
     try {
       await rejectWithdrawal(id, note || undefined);
       notify.info('Pedido rejeitado.');
@@ -254,9 +265,7 @@ export default function AdminPedidosPage() {
 
                             <div className="mt-1 flex items-center gap-2 text-xs text-blue-950">
                               <UserRound className="h-3.5 w-3.5 opacity-80" />
-                              <span className="truncate">
-                                {r.user_name ?? r.user_email ?? r.user_id}
-                              </span>
+                              <span className="truncate">{nameFor(r)}</span>
                             </div>
                           </div>
                         </div>
@@ -436,3 +445,4 @@ function FilterFields({
     </>
   );
 }
+

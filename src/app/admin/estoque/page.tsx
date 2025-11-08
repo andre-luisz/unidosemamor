@@ -86,7 +86,7 @@ export default function AdminEstoquePage() {
     const nova = Math.max(0, (item.quantidade ?? 0) + delta);
     setSavingId(id);
     try {
-      await updateItem(id, { quantidade: nova } as any);
+      await updateItem(id, { quantidade: nova } as Partial<any>);
     } finally {
       setSavingId(null);
     }
