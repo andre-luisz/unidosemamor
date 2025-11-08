@@ -1,3 +1,4 @@
+// src/app/auth/callback/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -24,7 +25,8 @@ export default function AuthCallbackPage() {
         // 1) Fluxo PKCE (moderno): ?code=...
         const code = url.searchParams.get('code');
         if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession({ code });
+          // Corrigido: a API espera apenas a string `code`, não um objeto.
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) throw error;
           setMsg('Login confirmado! Redirecionando…');
           window.location.replace('/');
