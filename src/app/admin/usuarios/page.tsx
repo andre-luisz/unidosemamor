@@ -1,3 +1,4 @@
+// src/app/admin/usuarios/page.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -10,7 +11,7 @@ import {
   getMyProfileSecure,
   adminSetStatus,
   type AdminPendingRow,
-  // 👇 nova função (passo 2)
+  // nova função (passo 2)
   adminListUsersSecure,
 } from '@/modules/auth/profileApi.secure';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,6 +32,15 @@ function StatusPill({ s }: { s: AdminPendingRow['status'] }) {
   return <Badge variant="secondary">pendente</Badge>;
 }
 
+/**
+ * Algumas respostas podem trazer `email` fora do tipo gerado, ou dentro de `user`.
+ * Estendemos localmente só para viabilizar o fallback no render.
+ */
+type AdminPendingRowUI = AdminPendingRow & {
+  email?: string | null;
+  user?: { email?: string | null } | null;
+};
+
 export default function AdminUsuariosPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -42,7 +52,7 @@ export default function AdminUsuariosPage() {
   const [pageSize, setPageSize] = useState(20);
 
   // dados
-  const [rows, setRows] = useState<AdminPendingRow[]>([]);
+  const [rows, setRows] = useState<AdminPendingRowUI[]>([]);
   const [loading, setLoading] = useState(true);
 
   // debounce da busca
@@ -82,7 +92,7 @@ export default function AdminUsuariosPage() {
         limit: pageSize,
         offset: page * pageSize,
       });
-      setRows(data ?? []);
+      setRows((data ?? []) as AdminPendingRowUI[]);
     } finally {
       setLoading(false);
     }
@@ -99,6 +109,8 @@ export default function AdminUsuariosPage() {
   }
 
   const activeCount = useMemo(() => rows.length, [rows]);
+
+  const displayEmail = (p: AdminPendingRowUI) => p.email ?? p.user?.email ?? '';
 
   if (!isAdmin) return null;
 
@@ -222,7 +234,7 @@ export default function AdminUsuariosPage() {
                           CPF {p.cpf_masked ?? '—'}
                           {' · '}Família: {p.family_size ?? '—'}
                           {' · '}Fone: {p.phone || '—'}
-                          {p.email ? ` · ${p.email}` : ''}
+                          {displayEmail(p) ? ` · ${displayEmail(p)}` : ''}
                         </div>
                       </div>
 
