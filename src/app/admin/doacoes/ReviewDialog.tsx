@@ -1,3 +1,4 @@
+// src/app/admin/doacoes/ReviewDialog.tsx
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
@@ -67,6 +68,7 @@ export default function ReviewDialog({
     [lines]
   );
 
+  // Evita render sem dados válidos
   if (!open || !header) return null;
 
   function setQty(idx: number, v: number) {
@@ -92,10 +94,17 @@ export default function ReviewDialog({
   }
 
   async function submit(status: 'approved' | 'rejected') {
+    // Satisfaz o TS (e protege execução caso algo mude em runtime)
+    if (!header) {
+      toast.error('Não foi possível identificar a doação selecionada.');
+      return;
+    }
+
     if (status === 'approved' && missingExpiry) {
       toast.error('Preencha a validade de todos os itens mantidos para aprovar.');
       return;
     }
+
     setSaving(true);
     try {
       const payload =
