@@ -32,11 +32,24 @@ export default function AdminEstoquePage() {
     return () => clearTimeout(t);
   }, [qRaw]);
 
+  // carregamento inicial + subscribe com cleanup síncrono
   useEffect(() => {
-    const load = async () => setItens(await fetchItems());
+    let active = true;
+
+    const load = async () => {
+      const data = await fetchItems();
+      if (active) setItens(data);
+    };
+
     load().catch(console.error);
-    const unsub = subscribeItems(load);
-    return unsub;
+
+    const unsub = subscribeItems(load); // retorna () => Promise<...> ou () => void
+
+    return () => {
+      active = false;
+      // Garante cleanup síncrono para o React: não retornar Promise aqui
+      void unsub();
+    };
   }, []);
 
   const categorias = useMemo(() => {
@@ -57,7 +70,7 @@ export default function AdminEstoquePage() {
       if (sort === 'nome')
         return a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' });
       if (sort === 'quantidade') return (b.quantidade ?? 0) - (a.quantidade ?? 0);
-      // prioridade: só posiciona “alta” > “média” > “baixa”, restante por nome
+      // prioridade: “alta” > “média” > “baixa”; empate por nome
       const ord = (p?: string | null) =>
         p === 'alta' ? 3 : p === 'media' ? 2 : p === 'baixa' ? 1 : 0;
       const d = ord(b.prioridade) - ord(a.prioridade);
@@ -145,17 +158,13 @@ export default function AdminEstoquePage() {
                       <div className="min-w-0">
                         <div className="font-medium truncate">{i.nome}</div>
                         <div className="flex items-center gap-2 mt-1">
-                          {i.categoria && (
-                            <Badge variant="secondary">{i.categoria}</Badge>
-                          )}
+                          {i.categoria && <Badge variant="secondary">{i.categoria}</Badge>}
                           {i.prioridade && (
                             <Badge className="bg-yellow-100 text-yellow-700">
                               {i.prioridade}
                             </Badge>
                           )}
-                          {low && (
-                            <Badge variant="destructive">baixo estoque</Badge>
-                          )}
+                          {low && <Badge variant="destructive">baixo estoque</Badge>}
                         </div>
                       </div>
 
