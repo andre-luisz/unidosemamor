@@ -41,8 +41,8 @@ export default function CadastroPage() {
       return;
     }
 
-    const { data } = await supabase.rpc<ProfileResponse[]>('get_my_profile_secure');
-    const row = data?.[0] ?? null;
+    const { data } = await supabase.rpc('get_my_profile_secure');
+const row = Array.isArray(data) ? (data[0] as ProfileResponse) ?? null : null;
     setProfile(row);
     setLoading(false);
 

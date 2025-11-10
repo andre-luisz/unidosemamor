@@ -200,7 +200,7 @@ export default function ProfileForm({ initial, onCancel, onSaved }: ProfileFormP
                   value={maskedCpfInput}
                   onChange={(e) => setCpf(e.target.value)}
                   placeholder="000.000.000-00"
-                  aria-invalid={cpf ? (!cpfIsValid).toString() : 'false'}
+                  aria-invalid={!alreadyHasCpf && cpf.length > 0 && !cpfIsValid ? true : undefined}
                 />
                 {!cpfIsValid && cpf.length > 0 && (
                   <p className="text-xs text-red-600 mt-1">CPF inválido.</p>

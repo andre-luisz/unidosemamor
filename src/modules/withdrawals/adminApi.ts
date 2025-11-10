@@ -1,3 +1,4 @@
+// src/modules/withdrawals/adminApi.ts
 import { supabase } from '@/lib/supabase';
 
 export type AdminWithdrawal = {
@@ -32,7 +33,7 @@ export async function listPendingWithdrawals(): Promise<AdminWithdrawal[]> {
 
 /**
  * (NOVA) Lista pedidos com filtros (status, período, busca, paginação).
- * Requer a RPC `admin_list_withdrawals_secure` (que te passei).
+ * Requer a RPC `admin_list_withdrawals_secure`.
  */
 export async function listWithdrawals(params: {
   status?: 'pending' | 'approved' | 'rejected';
@@ -44,7 +45,8 @@ export async function listWithdrawals(params: {
 }): Promise<AdminWithdrawalFull[]> {
   const { status, from, to, q, limit = 20, offset = 0 } = params || {};
 
-  const { data, error } = await supabase.rpc<AdminWithdrawalFull[]>(
+  // Deixe o TS inferir e faça cast do data
+  const { data, error } = await supabase.rpc(
     'admin_list_withdrawals_secure',
     {
       p_status: status ?? null,
@@ -101,5 +103,25 @@ export async function getWithdrawalItems(withdrawalId: string): Promise<Withdraw
     .eq('withdrawal_id', withdrawalId);
 
   if (error) throw new Error(error.message || 'Erro ao buscar itens do pedido');
-  return (data ?? []) as WithdrawalItemRow[];
+
+  const rows = (data ?? []).map((r: any) => {
+    // r.item pode vir como OBJETO ou como ARRAY
+    const raw = Array.isArray(r.item) ? r.item[0] : r.item;
+
+    const item =
+      raw && typeof raw === 'object'
+        ? {
+            id: String(raw.id),
+            nome: String(raw.nome),
+            unidade: raw.unidade ?? null,
+          }
+        : null;
+
+    return {
+      quantity: Number(r.quantity) ?? 0,
+      item,
+    } as WithdrawalItemRow;
+  });
+
+  return rows;
 }

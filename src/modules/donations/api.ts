@@ -100,10 +100,18 @@ function groupRowsToHeaders(rows: DonationRow[]): DonationHeader[] {
 /* ==== 1) Registrar doação ==== */
 export async function donateItemsBulk(lines: DonationLine[], note?: string) {
   const user = await requireUser();
+
   const payload = (lines ?? [])
     .filter((l) => l.item_id && Number(l.quantity) > 0)
-    .map((l) => ({ item_id: l.item_id, quantidade: Number(l.quantity), validade: l.expires_at ?? null }));
+    .map((l) => ({
+      item_id: l.item_id,
+      quantidade: Number(l.quantity),
+      validade: l.expires_at ?? null,
+    }));
+
   if (payload.length === 0) return;
+
+  // ❗️Sem generic; args sempre no 2º parâmetro
   const { error } = await supabase.rpc('donate_items_bulk', {
     p_note: note ?? null,
     p_payload: payload,
@@ -113,34 +121,54 @@ export async function donateItemsBulk(lines: DonationLine[], note?: string) {
 }
 
 /* ==== 2) Listagens “flat” (retro) ==== */
-export async function userListMyDonations(opts: {
-  q?: string; from?: string | null; to?: string | null; sortDir?: 'asc' | 'desc'; limit?: number; offset?: number;
+export async function userListMyDonations(opts?: {
+  q?: string;
+  from?: string | null;
+  to?: string | null;
+  sortDir?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
 }) {
   await requireUser();
   const { q = null, from = null, to = null, sortDir = 'desc', limit = 20, offset = 0 } = opts ?? {};
   const sd = sortDir === 'asc' ? 'asc' : 'desc';
-  const { data, error } = await supabase.rpc<any>('user_list_my_donations', {
-    p_from: from, p_to: to, p_q: q, p_limit: limit, p_offset: offset, p_sortdir: sd,
+
+  const { data, error } = await supabase.rpc('user_list_my_donations', {
+    p_from: from,
+    p_to: to,
+    p_q: q,
+    p_limit: limit,
+    p_offset: offset,
+    p_sortdir: sd,
   });
   if (error) throw error;
   return (Array.isArray(data) ? data : []).map(normalizeRow) as DonationRow[];
 }
 export const userListDonations = userListMyDonations;
 
-export async function adminListDonations(opts: {
-  q?: string; from?: string | null; to?: string | null; limit?: number; offset?: number;
+/* (Admin) lista “flat” - se sua RPC aceitar p_status, inclua aqui também */
+export async function adminListDonations(opts?: {
+  q?: string;
+  from?: string | null;
+  to?: string | null;
+  limit?: number;
+  offset?: number;
 }) {
   await requireUser();
   const { q = null, from = null, to = null, limit = 20, offset = 0 } = opts ?? {};
-  const { data, error } = await supabase.rpc<any>('admin_get_all_donations', {
-    p_from: from, p_to: to, p_q: q, p_limit: limit, p_offset: offset,
+  const { data, error } = await supabase.rpc('admin_get_all_donations', {
+    p_from: from,
+    p_to: to,
+    p_q: q,
+    p_limit: limit,
+    p_offset: offset,
   });
   if (error) throw error;
   return (Array.isArray(data) ? data : []).map(normalizeRow) as DonationRow[];
 }
 
 /* ==== 3) Cabeçalhos (usuario) ==== */
-export async function userListMyDonationHeaders(opts: {
+export async function userListMyDonationHeaders(opts?: {
   from?: string | null;
   to?: string | null;
   limit?: number;
@@ -149,8 +177,7 @@ export async function userListMyDonationHeaders(opts: {
   await requireUser();
   const { from = null, to = null, limit = 10, offset = 0 } = opts ?? {};
 
-  // chama a nova RPC que já retorna cabeçalhos com status + lines
-  const { data, error } = await supabase.rpc<any>('user_get_my_donation_headers', {
+  const { data, error } = await supabase.rpc('user_get_my_donation_headers', {
     p_from: from,
     p_to: to,
     p_limit: limit,
@@ -166,8 +193,8 @@ export async function userListMyDonationHeaders(opts: {
   })) as DonationHeader[];
 }
 
-/* ==== 4) Cabeçalhos (admin) — FORÇADO à assinatura com p_status ==== */
-export async function adminListDonationHeaders(opts: {
+/* ==== 4) Cabeçalhos (admin) — força p_status ==== */
+export async function adminListDonationHeaders(opts?: {
   from?: string | null;
   to?: string | null;
   status?: 'pending' | 'approved' | 'rejected' | null; // null = Todos
@@ -177,16 +204,14 @@ export async function adminListDonationHeaders(opts: {
   await requireUser();
   const { from = null, to = null, status = null, limit = 20, offset = 0 } = opts ?? {};
 
-  // 🔧 Envie SEMPRE p_status (mesmo null) para desambiguar a overload
-  const args = {
+  // Envie SEMPRE p_status para desambiguar overloads no backend
+  const { data, error } = await supabase.rpc('admin_get_all_donations', {
     p_from: from,
     p_to: to,
-    p_status: status ?? null, // <- aqui está o truque
+    p_status: status ?? null,
     p_limit: limit,
     p_offset: offset,
-  };
-
-  const { data, error } = await supabase.rpc<any>('admin_get_all_donations', args);
+  });
   if (error) throw error;
 
   const arr = Array.isArray(data) ? data : [];
@@ -199,6 +224,7 @@ export async function adminListDonationHeaders(opts: {
     })) as DonationHeader[];
   }
 
+  // fallback para retornar vazio caso a função esteja retornando flat
   return [];
 }
 
@@ -215,6 +241,7 @@ export async function adminReviewDonation(
     quantity: Number(l.quantity),
     expires_at: l.expires_at ?? null,
   }));
+
   const { error } = await supabase.rpc('admin_review_donation', {
     p_header_id: headerId,
     p_status: status,
@@ -223,3 +250,6 @@ export async function adminReviewDonation(
   });
   if (error) throw error;
 }
+
+/* ==== (Opcional) Utilitário se precisar agrupar rows em headers ==== */
+export { groupRowsToHeaders };

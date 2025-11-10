@@ -18,12 +18,38 @@ export default function HomePage() {
   const confirm = useConfirm();
 
   useEffect(() => {
-    fetchItems().then(setItens).catch((e) => {
-      console.error(e);
-      toast.error(e?.message || 'Falha ao carregar itens');
-    });
-    const unsub = subscribeItems(() => fetchItems().then(setItens).catch(console.error));
-    return unsub;
+    let mounted = true;
+
+    // carga inicial
+    fetchItems()
+      .then((data) => {
+        if (mounted) setItens(data);
+      })
+      .catch((e) => {
+        console.error(e);
+        toast.error(e?.message || 'Falha ao carregar itens');
+      });
+
+    // realtime: reconsulta a lista quando houver mudanças
+    const stop = subscribeItems(() =>
+      fetchItems()
+        .then((data) => {
+          if (mounted) setItens(data);
+        })
+        .catch(console.error)
+    );
+
+    // cleanup SEM Promise
+    return () => {
+      mounted = false;
+      if (typeof stop === 'function') {
+        const maybePromise = stop();
+        // se for uma promise, apenas ignore
+        if (maybePromise && typeof (maybePromise as any).then === 'function') {
+          void maybePromise;
+        }
+      }
+    };
   }, []);
 
   const visiveis = useMemo(() => {
@@ -67,7 +93,6 @@ export default function HomePage() {
       return;
     }
 
-    // Confirmação elegante
     const ok = await confirm({
       title: 'Enviar pedido?',
       description: 'Seu pedido será enviado para aprovação do administrador.',

@@ -1,3 +1,4 @@
+// src/modules/withdrawals/api.ts
 import { supabase } from '@/lib/supabase';
 
 export type Withdrawal = {
@@ -64,7 +65,7 @@ export async function userListMyWithdrawals(args: {
 
 export type WithdrawalItemRow = {
   quantity: number;
-  item: { id: string; nome: string; unidade: string } | null;
+  item: { id: string; nome: string; unidade: string | null } | null;
 };
 
 export async function getWithdrawalItems(
@@ -76,5 +77,25 @@ export async function getWithdrawalItems(
     .eq('withdrawal_id', withdrawalId);
 
   if (error) throw new Error(error.message || 'Erro ao buscar itens do pedido');
-  return (data ?? []) as WithdrawalItemRow[];
+
+  // Normalização: item pode vir como objeto ou como array (quando relação 1:N)
+  const rows = (data ?? []).map((r: any) => {
+    const raw = Array.isArray(r.item) ? r.item[0] : r.item;
+
+    const item =
+      raw && typeof raw === 'object'
+        ? {
+            id: String(raw.id),
+            nome: String(raw.nome),
+            unidade: raw?.unidade ?? null,
+          }
+        : null;
+
+    return {
+      quantity: Number(r.quantity) ?? 0,
+      item,
+    } as WithdrawalItemRow;
+  });
+
+  return rows;
 }

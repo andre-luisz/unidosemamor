@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+//import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useRequireApprovedUser } from '@/hooks/useRequireApprovedUser';
 import { supabase } from '@/lib/supabase';
@@ -242,7 +242,7 @@ export default function DoarPage() {
   return (
     <div className="min-h-dvh px-4 sm:px-8 py-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <Header modo="doar" badge={<Badge>{cartCount} na sacola</Badge>} />
+        <Header modo="doar" cartCount={cartCount} />
 
         {/* ===== Sacola ===== */}
         <Card className="rounded-2xl border-blue-200 bg-white/90 backdrop-blur shadow-sm">

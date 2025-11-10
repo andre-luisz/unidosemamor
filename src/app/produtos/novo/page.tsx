@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Header from '@/components/layout/Header';
-import { ProductForm, type FormData } from '@/modules/inventory/components/ProductForm';
+import { ProductForm, type FormValues } from '@/modules/inventory/components/ProductForm';
 import {
   fetchItems,
   subscribeItems,
@@ -33,7 +33,7 @@ export default function CadastrarProdutoPage() {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string>('all');
 
-  // pequena “debounce” para a busca
+  // debounce da busca
   useEffect(() => {
     const t = setTimeout(() => setQ(qRaw.trim()), 250);
     return () => clearTimeout(t);
@@ -44,6 +44,7 @@ export default function CadastrarProdutoPage() {
     window.setTimeout(() => setToast(null), ms);
   }
 
+  // checa sessão
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setAuthorized(!!data.session);
@@ -51,30 +52,56 @@ export default function CadastrarProdutoPage() {
     });
   }, []);
 
+  // carrega itens + realtime (cleanup sempre síncrono)
   useEffect(() => {
     if (!authorized) return;
+
+    let mounted = true;
+
     const load = async () => {
       const list = await fetchItems();
-      setItens(list);
+      if (mounted) setItens(list);
     };
+
     load().catch(console.error);
-    const unsub = subscribeItems(load);
-    return unsub;
+
+    const stop = subscribeItems(() => {
+      load().catch(console.error);
+    });
+
+    return () => {
+      mounted = false;
+      if (typeof stop === 'function') {
+        const maybe = stop();
+        // se retornar Promise, ignoramos para manter o cleanup síncrono
+        if (maybe && typeof (maybe as any).then === 'function') {
+          void maybe;
+        }
+      }
+    };
   }, [authorized]);
 
+  // gera signed URLs das imagens
   useEffect(() => {
+    let alive = true;
     (async () => {
       const entries: [string, string][] = [];
       for (const i of itens) {
         if (i.image_url) {
           try {
             const url = await getSignedUrlFromPath(i.image_url);
+            if (!alive) return;
             entries.push([i.id, url]);
-          } catch {}
+          } catch {
+            // ignora erro individual de imagem
+          }
         }
       }
-      setSignedMap(Object.fromEntries(entries));
+    if (alive) setSignedMap(Object.fromEntries(entries));
     })();
+    return () => {
+      alive = false;
+    };
   }, [itens]);
 
   // categorias únicas para o filtro
@@ -99,7 +126,7 @@ export default function CadastrarProdutoPage() {
     });
   }, [itensOrdenados, q, cat]);
 
-  async function handleSubmit(data: FormData) {
+  async function handleSubmit(data: FormValues) {
     try {
       await createItem({
         nome: data.nome,
@@ -109,7 +136,7 @@ export default function CadastrarProdutoPage() {
         imageFile: (data as any).imageFile?.[0] ?? undefined,
       });
       showToast('Produto cadastrado com sucesso!');
-      // mantém comportamento atual: lista é atualizada pelo subscribe
+      // lista será atualizada pelo subscribeItems
     } catch (e: any) {
       alert(e?.message || 'Erro ao cadastrar');
     }
@@ -295,7 +322,7 @@ export default function CadastrarProdutoPage() {
         </div>
       )}
 
-      {/* Toast simples local (mantive seu padrão) */}
+      {/* Toast simples local */}
       {toast && (
         <div className="fixed bottom-4 right-4 z-[60]">
           <div className="rounded-md bg-blue-600 text-white px-4 py-2 shadow-lg">
