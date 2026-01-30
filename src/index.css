@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+.card-admin {
+  @apply bg-white text-black p-6 rounded-xl shadow font-semibold text-center hover:shadow-lg transition;
+}
