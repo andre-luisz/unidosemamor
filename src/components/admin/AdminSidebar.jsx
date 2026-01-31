@@ -5,6 +5,7 @@ import {
   History,
   Users
 } from "lucide-react"
+import logo from "/logo.png"
 
 export default function AdminSidebar() {
   const location = useLocation()
@@ -18,7 +19,7 @@ export default function AdminSidebar() {
         className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
           active
             ? "bg-white/10 text-secondary font-semibold"
-            : "hover:bg-white/5"
+            : "text-white/80 hover:bg-white/5"
         }`}
       >
         <Icon size={18} />
@@ -29,16 +30,11 @@ export default function AdminSidebar() {
 
   return (
     <aside className="hidden md:flex flex-col w-64 bg-dark border-r border-white/10 p-4">
-
-      {/* LOGO */}
       <div className="flex items-center gap-3 mb-8 px-2">
-        <img src="/logo.png" alt="Unidos em Amor" className="h-8" />
-        <span className="font-bold text-secondary">
-          Admin
-        </span>
+        <img src={logo} className="h-8" />
+        <span className="font-bold text-secondary">Admin</span>
       </div>
 
-      {/* MENU */}
       <nav className="flex flex-col gap-1 text-sm">
         <Item to="/admin" icon={LayoutDashboard} label="Dashboard" />
         <Item to="/admin/cestas" icon={Package} label="Cestas" />
