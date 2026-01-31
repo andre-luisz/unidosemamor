@@ -3,10 +3,11 @@ import { motion } from "framer-motion"
 
 export default function ProductCard({ produto, quantidade, onAlterar }) {
   const adicionado = quantidade > 0
+  const indisponivel = produto.quantidade <= 0
 
   return (
     <motion.div
-      whileHover={{ scale: 1.02 }}
+      whileHover={!indisponivel ? { scale: 1.02 } : {}}
       className="
         relative w-full
         bg-white text-black
@@ -20,26 +21,44 @@ export default function ProductCard({ produto, quantidade, onAlterar }) {
     >
       {/* BADGE */}
       {adicionado && (
-        <span className="
-          absolute top-2 right-2 z-10
-          bg-red-600 text-white
-          text-[11px] font-bold
-          px-2 py-1 rounded-full
-        ">
+        <span
+          className="
+            absolute top-2 right-2 z-10
+            bg-red-600 text-white
+            text-[11px] font-bold
+            px-2 py-1 rounded-full
+          "
+        >
           {quantidade} na cesta
         </span>
       )}
 
       {/* IMAGEM */}
-      <div className="h-32 bg-gray-100 flex items-center justify-center">
+      <div className="relative h-32 bg-gray-100 flex items-center justify-center">
         <img
           src={produto.image_url || "/sem-imagem.png"}
           alt={produto.nome}
           className={`
             h-full object-contain transition
-            ${adicionado ? "opacity-40" : "opacity-100"}
+            ${indisponivel ? "opacity-30" : adicionado ? "opacity-40" : "opacity-100"}
           `}
         />
+
+        {/* OVERLAY INDISPONÍVEL */}
+        {indisponivel && (
+          <div className="
+            absolute inset-0
+            bg-black/40
+            flex items-center justify-center
+          ">
+            <span className="
+              text-white text-xs font-bold
+              bg-black/60 px-3 py-1 rounded-full
+            ">
+              Indisponível
+            </span>
+          </div>
+        )}
       </div>
 
       {/* CONTEÚDO */}
@@ -57,7 +76,12 @@ export default function ProductCard({ produto, quantidade, onAlterar }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => onAlterar(produto, -1)}
-              className="w-7 h-7 rounded-full bg-gray-200 text-sm"
+              disabled={quantidade === 0}
+              className="
+                w-7 h-7 rounded-full bg-gray-200 text-sm
+                disabled:opacity-40
+                disabled:cursor-not-allowed
+              "
             >
               −
             </button>
@@ -68,7 +92,12 @@ export default function ProductCard({ produto, quantidade, onAlterar }) {
 
             <button
               onClick={() => onAlterar(produto, 1)}
-              className="w-7 h-7 rounded-full bg-gray-200 text-sm"
+              disabled={indisponivel}
+              className="
+                w-7 h-7 rounded-full bg-gray-200 text-sm
+                disabled:opacity-40
+                disabled:cursor-not-allowed
+              "
             >
               +
             </button>
@@ -76,19 +105,27 @@ export default function ProductCard({ produto, quantidade, onAlterar }) {
 
           <button
             onClick={() => onAlterar(produto, 1)}
+            disabled={indisponivel}
             className={`
               flex items-center gap-1
               px-3 py-1.5 rounded-lg
               text-xs font-medium
+              transition
               ${
-                adicionado
+                indisponivel
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : adicionado
                   ? "bg-green-600 text-white"
                   : "bg-primary text-white"
               }
             `}
           >
             <Check size={14} />
-            {adicionado ? "Adicionado" : "Add"}
+            {indisponivel
+              ? "Indisponível"
+              : adicionado
+              ? "Adicionado"
+              : "Add"}
           </button>
         </div>
       </div>
