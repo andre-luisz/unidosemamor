@@ -65,12 +65,14 @@ export default function Doacoes() {
 
   /* ================= DASHBOARD ================= */
   async function carregarDashboard() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("donations")
       .select("status")
 
+    if (error) return
+
     const resumo = { pending: 0, approved: 0, rejected: 0 }
-    data?.forEach(d => resumo[d.status]++)
+    data.forEach(d => resumo[d.status]++)
 
     setDashboard(resumo)
   }
@@ -110,7 +112,7 @@ export default function Doacoes() {
 
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, nome, cpf")
+      .select("id, nome")
       .in("id", userIds)
 
     const perfilMap = Object.fromEntries(
@@ -167,10 +169,17 @@ export default function Doacoes() {
           .eq("id", item.produto_id)
       }
 
-      await supabase
-        .from("donations")
-        .update({ status: "approved" })
-        .eq("id", doacao.id)
+      /* ===== RPC APPROVE ===== */
+      const { error } = await supabase.rpc(
+        "approve_donation",
+        { p_donation_id: doacao.id }
+      )
+
+      if (error) {
+        toast.error("Erro ao aprovar doação")
+        setProcessando(null)
+        return
+      }
 
       toast.success("Doação aprovada")
       carregarDoacoes()
@@ -188,10 +197,16 @@ export default function Doacoes() {
     const id = modalRejeitar
     setProcessando(id)
 
-    await supabase
-      .from("donations")
-      .update({ status: "rejected" })
-      .eq("id", id)
+    const { error } = await supabase.rpc(
+      "reject_donation",
+      { p_donation_id: id }
+    )
+
+    if (error) {
+      toast.error("Erro ao rejeitar doação")
+      setProcessando(null)
+      return
+    }
 
     toast.success("Doação rejeitada")
     setModalRejeitar(null)
@@ -203,7 +218,6 @@ export default function Doacoes() {
   /* ================= UI ================= */
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 text-white">
-      {/* HEADER */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">
           Aprovação de Doações
@@ -218,7 +232,6 @@ export default function Doacoes() {
         </button>
       </div>
 
-      {/* DASHBOARD */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <Resumo titulo="Pendentes" valor={dashboard.pending} icon={<Clock />} />
         <Resumo titulo="Aprovadas" valor={dashboard.approved} icon={<CheckCircle />} />
@@ -228,67 +241,59 @@ export default function Doacoes() {
       {loading && <p>Carregando...</p>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-  {doacoes.map(d => (
-    <div
-      key={d.id}
-      className="bg-white text-black rounded-2xl p-6 flex flex-col"
-    >
-      <p className="font-semibold mb-3">
-        Doador: {d.profile?.nome}
-      </p>
+        {doacoes.map(d => (
+          <div key={d.id} className="bg-white text-black rounded-2xl p-6 flex flex-col">
+            <p className="font-semibold mb-3">
+              Doador: {d.profile?.nome}
+            </p>
 
-      <div className="space-y-3 flex-1">
-        {d.donation_items.map(item => (
-          <div
-            key={item.id}
-            className="flex gap-4 border p-3 rounded-xl"
-          >
-            <img
-              src={item.products?.image_url}
-              className="w-16 h-16 rounded object-cover"
-            />
+            <div className="space-y-3 flex-1">
+              {d.donation_items.map(item => (
+                <div key={item.id} className="flex gap-4 border p-3 rounded-xl">
+                  <img
+                    src={item.products?.image_url}
+                    className="w-16 h-16 rounded object-cover"
+                  />
 
-            <div className="flex-1">
-              <strong>{item.products?.nome}</strong>
-              <p className="text-sm">Qtd: {item.quantidade}</p>
+                  <div className="flex-1">
+                    <strong>{item.products?.nome}</strong>
+                    <p className="text-sm">Qtd: {item.quantidade}</p>
 
-              <input
-                type="date"
-                className="border p-2 rounded mt-2 w-full"
-                value={validadeMap[item.id] || ""}
-                onChange={e =>
-                  setValidadeMap(prev => ({
-                    ...prev,
-                    [item.id]: e.target.value
-                  }))
-                }
-              />
+                    <input
+                      type="date"
+                      className="border p-2 rounded mt-2 w-full"
+                      value={validadeMap[item.id] || ""}
+                      onChange={e =>
+                        setValidadeMap(prev => ({
+                          ...prev,
+                          [item.id]: e.target.value
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+              <button
+                onClick={() => aprovarDoacao(d)}
+                className="bg-green-600 text-white py-3 rounded-xl"
+              >
+                Aprovar
+              </button>
+
+              <button
+                onClick={() => setModalRejeitar(d.id)}
+                className="bg-red-600 text-white py-3 rounded-xl"
+              >
+                Rejeitar
+              </button>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
-        <button
-          onClick={() => aprovarDoacao(d)}
-          className="bg-green-600 text-white py-3 rounded-xl"
-        >
-          Aprovar
-        </button>
-
-        <button
-          onClick={() => setModalRejeitar(d.id)}
-          className="bg-red-600 text-white py-3 rounded-xl"
-        >
-          Rejeitar
-        </button>
-      </div>
-    </div>
-  ))}
-</div>
-
-
-      {/* MODAL */}
       <ConfirmModal
         open={!!modalRejeitar}
         loading={processando}
