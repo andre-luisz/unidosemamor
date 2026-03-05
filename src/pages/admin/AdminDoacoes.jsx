@@ -136,61 +136,24 @@ export default function Doacoes() {
 
   /* ================= APROVAR ================= */
   async function aprovarDoacao(doacao) {
-    setProcessando(doacao.id)
 
-    try {
-      const semValidade = doacao.donation_items.some(
-        i => !validadeMap[i.id]
-      )
+  setProcessando(doacao.id)
 
-      if (semValidade) {
-        toast.error("Informe a validade de todos os itens")
-        setProcessando(null)
-        return
-      }
+  const { error } = await supabase.rpc(
+    "approve_donation",
+    { donation_id: doacao.id }
+  )
 
-      for (const item of doacao.donation_items) {
-        await supabase
-          .from("donation_items")
-          .update({ validade: validadeMap[item.id] })
-          .eq("id", item.id)
-
-        const { data: produto } = await supabase
-          .from("products")
-          .select("quantidade")
-          .eq("id", item.produto_id)
-          .single()
-
-        await supabase
-          .from("products")
-          .update({
-            quantidade: (produto.quantidade || 0) + item.quantidade
-          })
-          .eq("id", item.produto_id)
-      }
-
-      /* ===== RPC APPROVE ===== */
-      const { error } = await supabase.rpc(
-        "approve_donation",
-        { p_donation_id: doacao.id }
-      )
-
-      if (error) {
-        toast.error("Erro ao aprovar doação")
-        setProcessando(null)
-        return
-      }
-
-      toast.success("Doação aprovada")
-      carregarDoacoes()
-      carregarDashboard()
-
-    } catch {
-      toast.error("Erro ao aprovar doação")
-    }
-
-    setProcessando(null)
+  if (error) {
+    toast.error("Essa doação já foi processada")
+  } else {
+    toast.success("Doação aprovada")
+    carregarDoacoes()
+    carregarDashboard()
   }
+
+  setProcessando(null)
+}
 
   /* ================= REJEITAR ================= */
   async function confirmarRejeicao() {
