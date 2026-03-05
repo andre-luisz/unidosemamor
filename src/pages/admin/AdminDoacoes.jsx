@@ -139,18 +139,20 @@ export default function Doacoes() {
 
   setProcessando(doacao.id)
 
-  const { error } = await supabase.rpc(
-    "approve_donation",
-    { donation_id: doacao.id }
-  )
+  const { data, error } = await supabase.rpc(
+  "approve_donation",
+  { p_donation_id: doacao.id }
+)
 
-  if (error) {
-    toast.error("Essa doação já foi processada")
-  } else {
-    toast.success("Doação aprovada")
-    carregarDoacoes()
-    carregarDashboard()
-  }
+console.log(error)
+
+if (error) {
+  toast.error(error.message)
+} else {
+  toast.success("Doação aprovada")
+  carregarDoacoes()
+  carregarDashboard()
+}
 
   setProcessando(null)
 }
